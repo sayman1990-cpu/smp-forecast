@@ -12,6 +12,8 @@ dependencies = [
     "tenacity>=8.5",       # 수집기 재시도
     "python-dotenv>=1.0",
     "apscheduler>=3.10",   # cron 대체 스케줄러
+    "streamlit>=1.38",     # 대시보드
+    "plotly>=5.24",        # 대시보드 차트
 ]
 
 [project.optional-dependencies]
