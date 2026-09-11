@@ -1,0 +1,29 @@
+# 자사 호기 제원 (4-4절 사내 자료 대응). 값은 전부 placeholder — 사내 자료 확보 즉시 채울 것.
+# 이 파일 자체가 3주차 "최대 병목" 항목의 체크리스트를 겸한다.
+
+units:
+  - unit_id: ""            # 예: DANGJIN-GS-1
+    name: ""
+    fuel_type: ""          # LNG / 유류 / 석탄 등
+    capacity_mw: null      # 정격용량
+    min_output_mw: null    # 최소출력
+    heat_rate: null        # 열소비율
+    variable_cost_krw_per_mwh: null   # 변동비 — 급전순위 산정 핵심
+    min_up_time_h: null
+    min_down_time_h: null
+    startup_cost_krw: null
+    lng_import_price_source: "TBD"    # 시장 평균 대체 금지 — 실제 도입단가 필요 (4-4절)
+    maintenance_schedule_ref: ""      # 정비 계획 문서/테이블 참조
+    forced_outage_rate: null
+    must_run: false
+
+# 확보 상태 체크 (11절과 연동)
+data_status:
+  hourly_generation_actual: "미확보"
+  startup_shutdown_log: "미확보"
+  performance_test_efficiency_curve: "미확보"
+  min_output_and_constraints: "미확보"
+  maintenance_and_outage_history: "미확보"
+  lng_import_price_actual: "미확보"
+  scon_history: "미확보"
+  mcore_forecast_history: "미확보"

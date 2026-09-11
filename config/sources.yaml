@@ -1,0 +1,74 @@
+# API 엔드포인트·파라미터 정의 (4-1절 대응)
+# service_key/api_key는 여기 쓰지 않는다 — .env에서 읽는다. 여기는 URL/주기/컬럼 매핑만.
+
+market:
+  smp_hourly:
+    name: "하루전 SMP + 수요예측"
+    provider: "공공데이터포털"
+    dataset: "한국전력거래소_계통한계가격 및 수요예측(하루전 발전계획용)"
+    schedule: "05:10"
+    note: "구 계통한계가격조회 API는 삭제 예정. 거래시간 0시=0:00~01:00 구간, 인덱스 변환 주의"
+
+  sukub_5min:
+    name: "5분 수급현황(수요·공급능력·예비력)"
+    provider: "공공데이터포털 / openapi.kpx.or.kr"
+    endpoint_candidates:
+      - "공공데이터포털: 현재전력수급현황조회"
+      - "openapi.kpx.or.kr/sukub.do"
+    schedule: "매시 :05"
+    note: "파일 다운로드는 3개월 단위 제한"
+
+  gen_by_source:
+    name: "발전원별 발전량"
+    provider: "공공데이터포털 KPX"
+    schedule: "daily"
+
+  solar_regional_hourly:
+    name: "지역별 시간별 태양광 발전량"
+    provider: "공공데이터포털 KPX"
+    schedule: "daily"
+
+  unit_cost:
+    name: "발전기별 변동비·열량단가"
+    provider: "EPSIS"
+    schedule: "monthly"
+    note: "공급곡선의 뼈대"
+
+weather:
+  kma_forecast:
+    name: "기온·일사·운량 (실황+예보)"
+    provider: "기상청 API허브"
+    schedule: "06:00,18:00"
+    note: "백테스트에는 실황이 아닌 당시 예보값을 써야 함 — 실황/예보 컬럼 분리 저장 필수"
+
+fuel_fx:
+  lng_import_price:
+    name: "LNG 수입단가"
+    provider: "관세청 수출입무역통계, 가스공사 원료비 공시"
+    schedule: "monthly"
+
+  dubai_fx:
+    name: "두바이유, 환율"
+    provider: "한국은행 ECOS API"
+    schedule: "daily"
+    note: "유가→열량단가 3~4개월 lag 적용"
+
+nuclear:
+  unit_status:
+    name: "원전 호기별 출력·정비"
+    provider: "원자력안전정보공개센터, 한수원 공시"
+    schedule: "daily"
+
+calendar:
+  holidays:
+    name: "공휴일·대체공휴일"
+    provider: "공공데이터포털 특일정보"
+    schedule: "yearly"
+
+# PK 규칙 (5절): (date, hour, market_type, unit_id) 로 UPSERT
+db:
+  primary_key: ["date", "hour", "market_type", "unit_id"]
+  quality_gate:
+    hours_per_day: 24
+    smp_range: [0, 400]
+    missing_policy: "NaN 유지, 임의 보간 금지"
