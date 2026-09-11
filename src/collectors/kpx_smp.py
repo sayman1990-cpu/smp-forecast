@@ -3,17 +3,37 @@
 데이터셋: 공공데이터포털 "한국전력거래소_계통한계가격 및 수요예측(하루전 발전계획용)"
 https://www.data.go.kr/data/15131225/openapi.do
 
-⚠ 파라미터/응답 필드명은 TODO — 공공데이터포털 상세페이지의 Swagger UI가
-이미지로 렌더링돼 있어 자동으로 못 긁어왔다. API 키 확인할 때 아래를 할 것:
-    1. 위 URL 접속 → "Swagger 가이드" 펼치기 → "Try it out" 실행
-    2. 실제 요청 URL, 파라미터명(날짜/페이지 등), 응답 JSON 예시를 확인
-    3. 아래 BASE_URL / build_params() / parse()의 TODO 부분을 그 예시에 맞춰 수정
+확인된 요청 스펙 (2026-09-11, 마이페이지 활용신청 상세기능정보 + 미리보기 캡처 기준):
+    - End Point: https://apis.data.go.kr/B552115/SmpWithForecastDemand/getSmpWithForecastDemand
+    - 요청변수: serviceKey, pageNo, numOfRows, dataType(json/xml), date(YYYYMMDD)
+    - 일일 트래픽: 100건 (개발계정) — 백필 시 --sleep 넉넉히 줄 것
 
-일단 데이터고 공공데이터포털 공통 규약(서비스키+페이지네이션+XML/JSON 응답)에
-맞춰 뼈대를 짜뒀다 — 실제 필드명만 나중에 끼워 넣으면 됨.
+확인된 응답 필드 (미리보기 예시):
+    {
+      "response": {
+        "header": {"resultCode": "00", "resultMsg": "OK"},
+        "body": {
+          "totalCount": "117909", "numOfRows": "10", "pageNo": "1",
+          "items": {"item": [
+            {"date": "20260914", "hour": "01", "areaName": "육지",
+             "smp": 98.64, "jlfd": 649.0, "slfd": 51829.0, "mlfd": 51180.0, "rn": 1},
+            ...
+          ]}
+        }
+      }
+    }
+    - date: YYYYMMDD 문자열
+    - hour: "01"~"24" 문자열. **거래시간 0시=0:00~01:00 구간(4-1절)이므로
+      hour="01"을 우리 DB의 hour=0으로 저장** (즉 응답 hour - 1)
+    - areaName: "육지" / "제주" 등 — 이 프로젝트는 육지만 다루므로 필터링
+    - smp: 원/kWh
+    - jlfd / slfd / mlfd: 부하(수요)예측 관련 3종 필드. 공식 필드 설명서를 아직
+      못 받아서 정확한 의미는 불확실 — 값 스케일로 추정하면 slfd(4.8만~6만대)가
+      육지 전체 수요예측치로 보여 일단 이걸 demand_forecast_mw로 쓴다.
+      jlfd(600~800대)는 제주로 추정. mlfd는 slfd와 비슷하나 근소하게 낮음(수정치 추정).
+      → 원본은 raw JSON에 그대로 보관되니, 정확한 의미 확인되면 매핑만 바꾸면 됨.
 
 주의(기획서 4-1절):
-- 거래시간 0시 = 0:00~01:00 구간. 응답의 시간 인덱스가 1~24인지 0~23인지 반드시 확인.
 - 구 `계통한계가격조회` API는 삭제 예정이므로 이 신규 API만 쓴다.
 """
 
@@ -25,8 +45,7 @@ import pandas as pd
 
 from src.collectors.base import BaseCollector, CollectorError
 
-# TODO: Swagger 문서에서 실제 엔드포인트로 교체
-BASE_URL = "https://apis.data.go.kr/B552115/PwrTradeSmpDamPreOpe/getSmpDamPreOpe"
+BASE_URL = "https://apis.data.go.kr/B552115/SmpWithForecastDemand/getSmpWithForecastDemand"
 
 
 class KpxSmpCollector(BaseCollector):
@@ -37,19 +56,20 @@ class KpxSmpCollector(BaseCollector):
         if not self.service_key:
             raise CollectorError("DATA_GO_KR_SERVICE_KEY 가 .env에 없음")
 
-    def _build_params(self, base_date: str, page_no: int = 1, num_of_rows: int = 100) -> dict:
-        # TODO: 실제 파라미터명 확인 후 수정 (baseDate/searchDate 등 이름이 다를 수 있음)
+    def _build_params(self, date: str, page_no: int = 1, num_of_rows: int = 100) -> dict:
+        # numOfRows=100: 육지+제주 합쳐 최대 48행이면 충분하지만 여유있게.
+        # 개발계정 트래픽 100건/일이므로 하루에 여러 번 부르지 않도록 한 번에 넉넉히 받는다.
         return {
             "serviceKey": self.service_key,
             "pageNo": page_no,
             "numOfRows": num_of_rows,
-            "dataType": "JSON",
-            "baseDate": base_date,  # YYYYMMDD
+            "dataType": "json",
+            "date": date,  # YYYYMMDD
         }
 
     def fetch_raw(self, base_date: str) -> dict:
         """base_date: 'YYYYMMDD'. 하루치 24시간 데이터를 받아온다."""
-        params = self._build_params(base_date)
+        params = self._build_params(date=base_date)
         resp = self._request(BASE_URL, params)
         try:
             return resp.json()
@@ -57,38 +77,38 @@ class KpxSmpCollector(BaseCollector):
             raise CollectorError(f"JSON 파싱 실패: {resp.text[:200]}") from e
 
     def parse(self, raw: dict) -> pd.DataFrame:
-        # TODO: 실제 응답 구조에 맞춰 경로 수정. 아래는 공공데이터포털 표준 응답 형태 가정:
-        # {"response": {"header": {...}, "body": {"items": {"item": [...]}}}}
+        header = raw.get("response", {}).get("header", {})
+        if header.get("resultCode") not in (None, "00"):
+            raise CollectorError(f"API 에러 응답: {header}")
+
         try:
             items = raw["response"]["body"]["items"]["item"]
         except (KeyError, TypeError) as e:
             raise CollectorError(f"예상 못한 응답 구조: {raw}") from e
 
-        if isinstance(items, dict):  # 단일 행이면 dict로 오는 경우 있음
+        if isinstance(items, dict):  # 하루 1건뿐이면 dict로 올 수 있음
             items = [items]
+        if not items:
+            return pd.DataFrame(columns=["date", "hour", "market_type", "unit_id", "smp_krw_kwh", "demand_forecast_mw", "source"])
 
         df = pd.DataFrame(items)
 
-        # TODO: 실제 컬럼명 확인 후 매핑 (예시 추정치)
-        rename_map = {
-            "baseDate": "date",
-            "tradeHour": "hour",  # 1~24 이면 -1 필요 (기획서 4-1절 인덱스 주의)
-            "smp": "smp_krw_kwh",
-            "forecastDemand": "demand_forecast_mw",
-        }
-        df = df.rename(columns={k: v for k, v in rename_map.items() if k in df.columns})
+        # 육지만 사용 (프로젝트 범위). areaName 컬럼이 없으면(응답 변형 대비) 전체 사용.
+        if "areaName" in df.columns:
+            df = df[df["areaName"] == "육지"].copy()
 
-        if "date" in df.columns:
-            df["date"] = pd.to_datetime(df["date"], format="%Y%m%d", errors="coerce").dt.date
-        if "hour" in df.columns:
-            df["hour"] = pd.to_numeric(df["hour"], errors="coerce").astype("Int64")
+        df["date"] = pd.to_datetime(df["date"], format="%Y%m%d", errors="coerce").dt.date
+        # 응답 hour는 "01"~"24" (거래시간, 1-based). DB는 0~23이므로 -1.
+        df["hour"] = pd.to_numeric(df["hour"], errors="coerce").astype("Int64") - 1
+        df["smp_krw_kwh"] = pd.to_numeric(df["smp"], errors="coerce")
+        df["demand_forecast_mw"] = pd.to_numeric(df.get("slfd"), errors="coerce")  # 잠정 매핑, 위 docstring 참조
 
         df["market_type"] = "day_ahead"
         df["unit_id"] = "MARKET"
         df["source"] = self.source_name
 
         keep = ["date", "hour", "market_type", "unit_id", "smp_krw_kwh", "demand_forecast_mw", "source"]
-        return df[[c for c in keep if c in df.columns]]
+        return df[keep].reset_index(drop=True)
 
 
 if __name__ == "__main__":
