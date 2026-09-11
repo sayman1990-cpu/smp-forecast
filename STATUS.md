@@ -63,6 +63,14 @@ Phase 1 (지금 여기)                    Phase 2 (데이터 충분히 쌓이�
 
 ---
 
+## 백업 / 저장 위치
+
+| | 저장 위치 | 용도 |
+|---|---|---|
+| 코드 | [GitHub: sayman1990-cpu/smp-forecast](https://github.com/sayman1990-cpu/smp-forecast) (private) | 백업 + 변경 이력 |
+| 데이터 (DB, 원본 JSON) | OneDrive 자동 동기화 | 집/회사 PC 간 데이터 이동 |
+| API 키 (`.env`) | 각 PC에 개별 설정, 어디에도 공유 저장 안 함 | 새 PC에서는 `.env.example` 복사해서 직접 키 입력 필요 |
+
 ## 집/회사 PC 전환 방법 (VPS 배포 전까지 임시방편)
 
 프로젝트 폴더 자체가 OneDrive(`C:\Users\sayma\OneDrive\전망sys\`) 안에 있어서
