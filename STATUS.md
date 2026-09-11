@@ -63,6 +63,17 @@ Phase 1 (지금 여기)                    Phase 2 (데이터 충분히 쌓이�
 
 ---
 
+## 집/회사 PC 전환 방법 (VPS 배포 전까지 임시방편)
+
+프로젝트 폴더 자체가 OneDrive(`C:\Users\sayma\OneDrive\전망sys\`) 안에 있어서
+**데이터 파일(`data/warehouse.duckdb` 등)도 OneDrive로 자동 동기화된다** (git과는 별개).
+
+- ⚠ **PC를 옮기기 전에**: 대시보드(streamlit) 껐는지, 실행 중인 스크립트 없는지 확인하고
+  OneDrive 동기화 완료(초록 체크) 확인 후 이동할 것 — DB 파일이 열린 채로 옮기면
+  동기화가 덜 된 상태로 넘어갈 수 있음
+- 회사 PC에서는: OneDrive 동기화 기다리기 → VS Code로 `전망sys` 폴더 열기 →
+  이 `STATUS.md` 읽기 → 이어서 작업
+
 ## 다시 시작할 때 확인 명령어 (집/회사 PC 바뀔 때)
 
 ```bash
@@ -73,9 +84,8 @@ python -m src.storage.db      # DB 스키마 확인/초기화
 streamlit run src/report/dashboard.py   # 대시보드 띄우기 (localhost:8501)
 ```
 
-지금까지 쌓인 실제 데이터(`data/warehouse.duckdb`, `data/raw/`)는 **이 PC에만 있고 git에는 안 올라감** (`.gitignore`로 제외). 다른 PC에서 이어서 작업하려면:
-- 코드는 git으로 그대로 옮겨지지만
-- **쌓인 데이터는 이 PC에서 파일로 직접 복사해가거나, VPS 배포 후엔 VPS의 DB를 공용으로 써야 함** (아직 VPS 배포 전이라 지금은 이 PC가 유일한 데이터 저장소)
+지금까지 쌓인 실제 데이터(`data/warehouse.duckdb`, `data/raw/`)는 git에는 안 올라가지만
+(`.gitignore`로 제외) **OneDrive로는 자동 동기화됨** — 위 "집/회사 PC 전환 방법" 참고.
 
 ## 변경 이력 (git 커밋 기준)
 
