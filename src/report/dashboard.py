@@ -85,16 +85,39 @@ else:
     st.subheader(table_label)
     st.dataframe(df, use_container_width=True, height=350)
 
-    numeric_cols = df.select_dtypes(include="number").columns.tolist()
-    if numeric_cols:
-        y_col = st.selectbox("차트로 볼 항목", numeric_cols)
-        x_col = "date" if "date" in df.columns else ("ts" if "ts" in df.columns else df.columns[0])
+    plot_df = df.copy()
+
+    # date + hour가 둘 다 있으면 "시간대별 흐름"이 보이는 진짜 시간축을 만든다.
+    # (date만 쓰면 하루 24개 점이 한 자리에 겹쳐 찍혀서 지그재그로 보임)
+    x_col = None
+    if "date" in plot_df.columns and "hour" in plot_df.columns:
+        plot_df["datetime"] = pd.to_datetime(plot_df["date"].astype(str)) + pd.to_timedelta(
+            plot_df["hour"], unit="h"
+        )
+        x_col = "datetime"
+    elif "ts" in plot_df.columns:
+        x_col = "ts"
+    elif "date" in plot_df.columns:
+        x_col = "date"
+
+    # hour/rn처럼 값이 아니라 "몇 번째"를 뜻하는 컬럼은 차트 후보에서 뺀다.
+    index_like_cols = {"hour", "rn", "pageNo"}
+    numeric_cols = [c for c in plot_df.select_dtypes(include="number").columns if c not in index_like_cols]
+
+    if numeric_cols and x_col:
+        # smp처럼 값다운 컬럼을 기본 선택지로
+        preferred = [c for c in numeric_cols if "smp" in c.lower() or "price" in c.lower()]
+        default_idx = numeric_cols.index(preferred[0]) if preferred else 0
+        y_col = st.selectbox("차트로 볼 항목", numeric_cols, index=default_idx)
+
         color_col = None
         for c in ["unit_id", "market_type", "region", "fuel_type", "kind"]:
-            if c in df.columns and df[c].nunique() > 1:
+            if c in plot_df.columns and plot_df[c].nunique() > 1:
                 color_col = c
                 break
-        fig = px.line(df, x=x_col, y=y_col, color=color_col, markers=True)
+        fig = px.line(
+            plot_df.sort_values(x_col), x=x_col, y=y_col, color=color_col, markers=True
+        )
         st.plotly_chart(fig, use_container_width=True)
 
     st.download_button(
