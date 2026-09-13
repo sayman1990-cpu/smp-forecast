@@ -14,13 +14,27 @@ CREATE TABLE IF NOT EXISTS smp_hourly (
     PRIMARY KEY (date, hour, market_type, unit_id)
 );
 
+-- KPX openapi.kpx.or.kr "현재/오늘 전력수급현황조회" 실제 응답 필드 그대로 (2026-09-12 확인)
 CREATE TABLE IF NOT EXISTS sukub_5min (
-    ts               TIMESTAMP NOT NULL,
-    demand_mw        DOUBLE,
-    supply_capacity_mw DOUBLE,
-    reserve_mw       DOUBLE,
-    collected_at     TIMESTAMP DEFAULT current_timestamp,
+    ts                  TIMESTAMP NOT NULL,     -- baseDatetime
+    supply_capacity_mw  DOUBLE,                 -- suppAbility 공급능력
+    demand_mw           DOUBLE,                 -- currPwrTot 현재수요
+    forecast_load_mw    DOUBLE,                 -- forecastLoad 최대예측수요
+    supply_reserve_mw   DOUBLE,                 -- suppReservePwr 공급예비력
+    supply_reserve_rate DOUBLE,                 -- suppReserveRate 공급예비율(%)
+    oper_reserve_mw     DOUBLE,                 -- operReservePwr 운영예비력
+    oper_reserve_rate   DOUBLE,                 -- operReserveRate 운영예비율(%)
+    collected_at        TIMESTAMP DEFAULT current_timestamp,
     PRIMARY KEY (ts)
+);
+
+-- KPX "원별발전량현황조회" (sumperfuel5m) 실제 응답 필드 (2026-09-12 확인)
+CREATE TABLE IF NOT EXISTS gen_by_source_5min (
+    ts             TIMESTAMP NOT NULL,   -- baseDatetime
+    fuel_type      VARCHAR NOT NULL,     -- 수력/유류/유연탄/원자력/양수/가스/국내탄/태양광(시장)/풍력/신재생/ppa추정/btm추정
+    gen_mw         DOUBLE,
+    market_demand_mw DOUBLE,             -- fuelPwrTot 시장수요(현재), fuel_type 무관하게 같은 값 반복 저장
+    PRIMARY KEY (ts, fuel_type)
 );
 
 CREATE TABLE IF NOT EXISTS gen_by_source (
