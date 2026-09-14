@@ -1,11 +1,26 @@
 # 진행 상황
 
 > 집/회사 오가며 작업 — 다시 시작할 때 이 파일부터 읽을 것.
-> 최종 수정: 2026-09-13
+> 최종 수정: 2026-09-14
 
 ## 지금 한 줄 요약
 
-**SMP 실제 수집 성공, DB에 쌓이는 중, 대시보드로 조회 가능.** 5분수급현황/발전원별발전량 수집기도 코드는 완성했지만 **운영계정 승인 대기 중이라 아직 실제 수집은 안 됨**. 전망 모델(Phase 2)은 손대지 않고 있음 — 데이터 쌓는 것에만 집중하기로 확정.
+**공공데이터포털 운영계정 전환 신청 반려됨** — 사유: "활용사례 URL이 연결되지 않아, 실제 활용을 확인할 수 없어 반려합니다". 재신청 위해 대시보드를 Streamlit Community Cloud로 공개 배포하는 중 (아래 "운영계정 반려 대응" 참고). SMP 실제 수집 성공, DB에 쌓이는 중, 대시보드로 조회 가능. 5분수급현황/발전원별발전량 수집기도 코드는 완성했지만 **운영계정 승인 대기 중이라 아직 실제 수집은 안 됨**. 전망 모델(Phase 2)은 손대지 않고 있음 — 데이터 쌓는 것에만 집중하기로 확정.
+
+## ⚠ 운영계정 반려 대응 (지금 진행 중)
+
+**반려 사유**: 신청서에 적은 활용사례 URL에 심사자가 접속했으나 열리지 않음. 원인은 그동안 대시보드가 `localhost:8501`(로컬 PC)에서만 돌고 있어 외부에서 접속 불가능했기 때문으로 추정.
+
+**해결 방향**: 대시보드를 Streamlit Community Cloud에 공개 배포해서 실제 접속 가능한 URL 확보 → 재신청서에 그 URL 기입.
+
+**완료한 것**:
+- [x] `data/warehouse.duckdb`(360행, SMP 실적 스냅샷)를 심사용으로 임시 force-add하여 커밋·push (`5f39a8e`). 대시보드는 API 키 없이 이 DB 파일만 읽으면 되므로 Streamlit Cloud에 Secrets 설정 불필요.
+
+**아직 사용자가 직접 해야 하는 것 (웹 UI 작업이라 에이전트가 대행 불가)**:
+1. GitHub 저장소([sayman1990-cpu/smp-forecast](https://github.com/sayman1990-cpu/smp-forecast))를 Settings → Danger Zone → **Change visibility → Public** 으로 전환
+2. [share.streamlit.io](https://share.streamlit.io)에서 GitHub 계정으로 로그인 → New app → 저장소/브랜치 선택, Main file path에 `src/report/dashboard.py` 입력 → Deploy
+3. 배포된 `https://xxx.streamlit.app` URL을 공공데이터포털 재신청서의 "활용사례 URL"에 기입해서 재신청
+4. **심사 통과 후 뒷정리**: `git rm --cached data/warehouse.duckdb && git commit && git push` 로 임시 커밋한 실제 데이터 제거 (심사용 스냅샷일 뿐, 계속 공개 상태로 둘 이유 없음). 저장소를 다시 private으로 되돌릴지도 이때 결정.
 
 ## 큰 그림 (원래 기획에서 순서 재조정함)
 
