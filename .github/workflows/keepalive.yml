@@ -1,0 +1,19 @@
+name: Keep Streamlit dashboard awake
+
+# 공공데이터포털 운영계정 심사용 "활용사례 URL"이 Streamlit Community Cloud
+# 무료 티어라 방문자가 없으면 앱이 잠들어(sleep) 심사관 접속 시 반려되는 문제 방지.
+# 주기적으로 앱 URL에 접속만 해서 활성 상태를 유지한다.
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping dashboard to prevent sleep
+        run: |
+          curl -sSL -o /dev/null -w "status=%{http_code}\n" \
+            "https://smp-forecast-f2qzmmqfm9gfybjpqvjd2f.streamlit.app" || true
